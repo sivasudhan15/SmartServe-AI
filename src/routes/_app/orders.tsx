@@ -267,13 +267,46 @@ function OrdersPage() {
       </div>
 
       {ordersQuery.isLoading ? (
-        <Card className="p-8 text-center text-muted-foreground rounded-2xl">Loading orders…</Card>
+        <div className="space-y-3">
+          {[1, 2, 3].map((n) => (
+            <Card key={n} className="p-5 rounded-2xl border-border/60 shadow-card flex items-center justify-between animate-pulse">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="h-9 w-20 bg-muted rounded-xl" />
+                <div className="h-6 w-16 bg-muted rounded-lg" />
+                <div className="h-5 w-40 bg-muted rounded-lg" />
+              </div>
+              <div className="h-6 w-16 bg-muted rounded-xl" />
+            </Card>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
-        <Card className="p-10 text-center rounded-2xl border-dashed">
-          <div className="text-lg font-semibold">No orders yet</div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create a new order or seed demo data to see the live timeline.
-          </p>
+        <Card className="p-12 text-center rounded-3xl border-dashed border-border/60 bg-muted/10 max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-gradient-primary grid place-items-center text-primary-foreground shadow-elegant animate-float">
+            <ShoppingBag className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">No orders found</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              Create a live order to track tickets, monitor status steps, and view real-time kitchen progress.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => seedFn().then(() => qc.invalidateQueries({ queryKey: ["orders"] }))}
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Seed demo
+            </Button>
+            <Button
+              variant="hero"
+              size="sm"
+              onClick={() => newOrder.mutate()}
+              disabled={newOrder.isPending}
+            >
+              <Plus className="h-3.5 w-3.5" /> Create live order
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="space-y-3">

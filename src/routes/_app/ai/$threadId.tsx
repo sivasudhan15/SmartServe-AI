@@ -151,7 +151,6 @@ function ChatPage() {
           </div>
         </Card>
 
-        {/* Chat window */}
         {accessToken && historyQ.data ? (
           <ChatWindow
             key={threadId}
@@ -160,8 +159,22 @@ function ChatPage() {
             initialMessages={historyQ.data.messages as UIMessage[]}
           />
         ) : (
-          <Card className="rounded-2xl border-border/60 p-10 text-center text-muted-foreground min-h-[560px] grid place-items-center">
-            Loading conversation…
+          <Card className="rounded-3xl border-border/60 p-6 min-h-[560px] flex flex-col justify-between animate-pulse">
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="h-9 w-9 rounded-xl bg-muted shrink-0" />
+                <div className="h-10 w-2/3 bg-muted rounded-2xl" />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <div className="h-10 w-1/2 bg-muted rounded-2xl" />
+                <div className="h-9 w-9 rounded-xl bg-muted shrink-0" />
+              </div>
+              <div className="flex gap-3">
+                <div className="h-9 w-9 rounded-xl bg-muted shrink-0" />
+                <div className="h-12 w-3/4 bg-muted rounded-2xl" />
+              </div>
+            </div>
+            <div className="h-12 w-full bg-muted rounded-xl mt-auto" />
           </Card>
         )}
       </div>

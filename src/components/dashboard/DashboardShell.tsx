@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Utensils,
@@ -15,6 +15,8 @@ import {
   LayoutGrid,
   LogOut,
   Search,
+  Menu,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -48,10 +50,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
+
+  // Auto-close mobile drawer on route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -67,92 +75,145 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <div className="min-h-dvh grid place-items-center bg-muted/30 text-sm text-muted-foreground">
-        Loading…
+        <div className="flex flex-col items-center gap-2">
+          <span className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          Loading…
+        </div>
       </div>
     );
   }
 
+  const sidebarContent = (
+    <>
+      <div className="h-16 px-5 flex items-center justify-between border-b border-border/60">
+        <Logo />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Close navigation menu"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Workspace
+        </div>
+        {nav.map((n) => {
+          const active = pathname === n.to || pathname.startsWith(n.to + "/");
+          return (
+            <Link
+              key={n.to}
+              to={n.to}
+              className={cn(
+                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all",
+                active
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                n.highlight && !active && "text-primary",
+              )}
+            >
+              <n.icon className="h-4 w-4" />
+              <span className="flex-1">{n.label}</span>
+              {n.highlight && !active && (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              )}
+            </Link>
+          );
+        })}
+        <div className="px-2 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Account
+        </div>
+        <Link
+          to="/notifications"
+          className={cn(
+            "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all",
+            pathname === "/notifications"
+              ? "bg-primary/10 text-primary font-medium"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          <Bell className="h-4 w-4" /> Notifications
+        </Link>
+        <Link
+          to="/settings"
+          className={cn(
+            "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all",
+            pathname === "/settings"
+              ? "bg-primary/10 text-primary font-medium"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          <Settings className="h-4 w-4" /> Settings
+        </Link>
+      </nav>
+      <div className="p-3 border-t border-border/60 bg-sidebar/80 backdrop-blur-md">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="h-9 w-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate">{displayName}</div>
+            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+          </div>
+          <Button variant="ghost" size="icon" aria-label="Sign out" onClick={signOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-dvh bg-muted/30 flex">
-      {/* Sidebar */}
+      {/* Mobile Drawer Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer Panel */}
+      <aside
+        className={cn(
+          "lg:hidden fixed inset-y-0 left-0 z-50 w-72 shrink-0 flex flex-col border-r border-border/60 bg-sidebar transition-transform duration-300 ease-out shadow-elegant",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-sidebar">
-        <div className="h-16 px-5 flex items-center border-b border-border/60">
-          <Logo />
-        </div>
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Workspace
-          </div>
-          {nav.map((n) => {
-            const active = pathname === n.to || pathname.startsWith(n.to + "/");
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={cn(
-                  "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all",
-                  active
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                  n.highlight && !active && "text-primary",
-                )}
-              >
-                <n.icon className="h-4 w-4" />
-                <span className="flex-1">{n.label}</span>
-                {n.highlight && !active && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                )}
-              </Link>
-            );
-          })}
-          <div className="px-2 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Account
-          </div>
-          <Link
-            to="/notifications"
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
-            <Bell className="h-4 w-4" /> Notifications
-          </Link>
-          <Link
-            to="/settings"
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
-            <Settings className="h-4 w-4" /> Settings
-          </Link>
-        </nav>
-        <div className="p-3 border-t border-border/60">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="h-9 w-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">{displayName}</div>
-              <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-            </div>
-            <Button variant="ghost" size="icon" aria-label="Sign out" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        {sidebarContent}
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="sticky top-0 z-30 h-16 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-          <div className="h-full px-4 md:px-6 flex items-center gap-3">
-            <div className="lg:hidden">
-              <Logo showText={false} />
+          <div className="h-full px-4 md:px-6 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden shrink-0"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <Logo showText={true} className="max-xs:hidden" />
+              <Logo showText={false} className="xs:hidden" />
             </div>
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-xs md:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search orders, dishes, guests…"
+                placeholder="Search…"
                 className="pl-9 h-10 rounded-xl bg-muted/50 border-transparent focus-visible:bg-background"
               />
-              <kbd className="hidden md:block absolute right-3 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
-                ⌘K
-              </kbd>
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle />
@@ -173,12 +234,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">{children}</main>
+        {/* Main Content Area with Page Transition animation */}
+        <main
+          key={pathname}
+          className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto animate-fade-up"
+        >
+          {children}
+        </main>
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden sticky bottom-0 z-30 border-t border-border/60 bg-background/95 backdrop-blur-xl">
           <div className="grid grid-cols-5 h-14">
-            {nav.slice(0, 5).map((n) => {
+            {nav.slice(0, 4).map((n) => {
               const active = pathname === n.to || pathname.startsWith(n.to + "/");
               return (
                 <Link
@@ -194,9 +261,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="flex flex-col items-center justify-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              <Menu className="h-4 w-4" />
+              More
+            </button>
           </div>
         </nav>
       </div>
     </div>
   );
 }
+
