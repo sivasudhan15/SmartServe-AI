@@ -8,14 +8,24 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(({ data }) => {
+
+    // Fetch initial session stored in local storage
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (!mounted) return;
-      setUser(data.user ?? null);
+      if (error) {
+        console.error("[useAuth] Error fetching session:", error);
+      }
+      setUser(session?.user ?? null);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+
+    // Listen for auth state changes (sign in, sign out, token refresh, OAuth redirect)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setUser(session?.user ?? null);
+      setLoading(false);
     });
+
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();

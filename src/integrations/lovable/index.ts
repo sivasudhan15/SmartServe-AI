@@ -12,27 +12,50 @@ type SignInOptions = {
 export const lovable = {
   auth: {
     signInWithOAuth: async (provider: "google" | "apple" | "microsoft" | "lovable", opts?: SignInOptions) => {
-      const result = await lovableAuth.signInWithOAuth(provider, {
-        redirect_uri: opts?.redirect_uri,
-        extraParams: {
-          ...opts?.extraParams,
+      const redirectUri =
+        opts?.redirect_uri ||
+        (typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined);
+
+      // Try Lovable Cloud Auth if available
+      try {
+        const result = await lovableAuth.signInWithOAuth(provider, {
+          redirect_uri: redirectUri,
+          extraParams: {
+            ...opts?.extraParams,
+          },
+        });
+
+        if (result.redirected) {
+          return result;
+        }
+
+        if (result.tokens) {
+          await supabase.auth.setSession(result.tokens);
+          return result;
+        }
+
+        if (result.error) {
+          console.warn("[Auth] Lovable Cloud Auth failed, delegating to Supabase OAuth:", result.error);
+        }
+      } catch (err) {
+        console.warn("[Auth] Lovable Auth exception, delegating to Supabase OAuth:", err);
+      }
+
+      // Direct Supabase OAuth Fallback (Standard Supabase JS SDK)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider === "microsoft" ? "azure" : (provider as "google" | "apple" | "azure"),
+        options: {
+          redirectTo: redirectUri,
+          queryParams: opts?.extraParams,
         },
       });
 
-      if (result.redirected) {
-        return result;
+      if (error) {
+        return { error: error instanceof Error ? error : new Error(error.message || String(error)) };
       }
 
-      if (result.error) {
-        return result;
-      }
-
-      try {
-        await supabase.auth.setSession(result.tokens);
-      } catch (e) {
-        return { error: e instanceof Error ? e : new Error(String(e)) };
-      }
-      return result;
+      return { redirected: true, data };
     },
   },
 };
+
